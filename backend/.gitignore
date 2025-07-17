@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Virtual environment
+venv/
+env/
+
+# Environment variables
+.env
+*.env
+
+# VSCode settings
+.vscode/
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# Pytest cache
+.pytest_cache/
+
+# Coverage reports
+htmlcov/
+.coverage
+.tox/
+
+# Byte-compiled files
+*.so
+
+# mypy
+.mypy_cache/
+
+# Playwright specific
+playwright/.cache/

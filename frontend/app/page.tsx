@@ -1,16 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { fetchHealth } from "@/lib/api";
 
 export default function Home() {
-  const [ping, setPing] = useState("");
+  const [ping, setPing] = useState<string | null>(null);
+  const [error, setError] = useState<boolean>(false);
 
   useEffect(() => {
-    fetch("http://localhost:8000/ping")
-      .then((res) => res.json())
+    fetchHealth()
       .then((data) => setPing(data.status))
-      .catch(() => setPing("error"));
+      .catch(() => setError(true));
   }, []);
+
+  if (error) {
+    return <p>Failed to contact backend 😕</p>;
+  }
+
+  if (!ping) {
+    return <p>Checking backend status...</p>;
+  }
 
   return (
     <main className="p-4">
