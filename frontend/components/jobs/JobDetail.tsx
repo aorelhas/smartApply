@@ -76,8 +76,8 @@ export default function JobDetail({ job }: { job: Job }) {
 
         <div className="mb-6">
           <h3 className="font-medium mb-2">Job Description</h3>
-          <div className="prose max-w-none">
-            {job.description || "No description available"}
+          <div className="prose prose-lg max-w-none leading-relaxed text-gray-800">
+            <div dangerouslySetInnerHTML={{ __html: job.description }} />
           </div>
         </div>
 
