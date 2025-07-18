@@ -1,26 +1,46 @@
 import requests
-from datetime import datetime, timezone
-from app.core.supabase_client import supabase
+import os
 import uuid
 
-REMOTEOK_API_URL = "https://remoteok.io/api"
+from datetime import datetime, timezone
+from app.core.supabase_client import supabase
+
+REMOTEOK_API_URL = os.getenv("REMOTEOK_API_URL") or "https://remoteok.io/api"
+
+# Define relevant keywords in job titles
+desired_keywords = [
+    "Developer", "Engineer", "Software Engineer", "Backend Developer", "Frontend Developer", 
+    "Full Stack", "Python Developer", "Node.js Developer", "React Developer", "Next.js Developer",
+    "Solutions Architect", "Software Architect", "Tech Lead", "Technical Lead", 
+    "Data Engineer", "Platform Engineer", "Infrastructure Engineer", 
+    "DevOps Engineer", "Cloud Engineer", "Site Reliability Engineer", "SRE", 
+    "API Developer", "Microservices", "System Engineer"
+]
 
 def scrape_remoteok():
     response = requests.get(REMOTEOK_API_URL, headers={"User-Agent": "Mozilla/5.0"})
     if response.status_code != 200:
         raise Exception("Failed to fetch data from RemoteOK")
     
-    jobs = response.json()[1:] # In order to skip metadata
+    jobs = response.json()[1:]  # Skip metadata
+    jobs_scraped = 0
 
     for job in jobs:
+        title = job.get("position") or job.get("title") or ""
+        tags = job.get("tags", [])
+
+        # Filter by relevant job titles
+        if not any(keyword.lower() in title.lower() for keyword in desired_keywords):
+            continue
+
         job_data = {
             "id": str(uuid.uuid4()),
-            "title": job.get("position") or job.get("title"),
+            "title": title,
             "company": job.get("company"),
             "location": job.get("location") or "Remote",
             "remote": True,
             "seniority": None,
-            "tech_stack": job.get("tags", []),
+            "tech_stack": tags,
             "description": job.get("description"),
             "fit_score": None,
             "pitch": None,
@@ -36,8 +56,9 @@ def scrape_remoteok():
             continue
 
         supabase.table("jobs").insert(job_data).execute()
+        jobs_scraped += 1
 
-    return {"source": "RemoteOK", "jobs_scraped": len(jobs)}
+    return {"source": "RemoteOK", "jobs_scraped": jobs_scraped}
 
 # todo: create multiple functions for each scrape
 

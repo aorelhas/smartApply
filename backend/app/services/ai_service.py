@@ -1,58 +1,69 @@
-import json, os, openai
-from datetime import datetime
-
+import json
+import os
+from datetime import datetime, timezone
+from groq import Groq
 from app.core.supabase_client import supabase
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-if not openai.api_key:
-    raise EnvironmentError("OPENAI_API_KEY not set in the environment variables.")
+USER_PROFILE_ID = os.getenv("USER_PROFILE_ID")
+
+def get_user_profile():
+    response = supabase.table("user_profile").select("*").eq("id", USER_PROFILE_ID).single().execute()
+    return response.data
 
 def get_unprocessed_jobs():
     response = supabase.table("jobs").select("*").eq("processed", False).execute()
     return response.data
 
-def generate_job_analysis(description, user_profile=None):
-     # MOCKED response for development
-    return json.dumps({
-        "tech_stack": ["Python", "FastAPI", "PostgreSQL"],
-        "seniority": "Mid-level",
-        "remote": True,
-        "fit_score": 85,
-        "pitch": "You are a great fit given your backend expertise."
-    })
+def generate_job_analysis(description, user_profile):
+    profile_summary = f"""
+    Skills: {', '.join(user_profile.get('skills', []))}
+    Languages: {', '.join(user_profile.get('languages', []))}
+    Preferred Seniority: {', '.join(user_profile.get('preferred_seniority', []))}
+    Preferred Tech Stacks: {', '.join(user_profile.get('preferred_tech_stacks', []))}
+    Preferred Methodologies: {', '.join(user_profile.get('preferred_methodologies', []))}
+    Remote Only: {user_profile.get('remote_only', False)}
+    """
 
-    # prompt = f"""
-    # Analyze the following job description and return:
-    # 1. Tech Stack (as an array)
-    # 2. Seniority level
-    # 3. Is the job remote? (true/false)
-    # 4. Fit score between 0-100 based on the following user skills: {user_profile or 'No user profile provided'}
-    # 5. A 2-line personalized pitch.
+    prompt = f"""
+    Analyze the following job description and return a JSON response with:
+    - tech_stack: string[]
+    - seniority: string
+    - remote: boolean
+    - fit_score: integer between 0-100 (how well this job matches the user profile)
+    - pitch: A 2-line personalized pitch for this job
 
-    # Job Description:
-    # {description}
+    USER PROFILE:
+    {profile_summary}
 
-    # Respond in JSON with keys: tech_stack, seniority, remote, fit_score, pitch
-    # """
+    JOB DESCRIPTION:
+    {description}
 
-    # response = openai.ChatCompletion.create(
-    #     model="gpt-4o",
-    #     messages=[{"role": "user", "content": prompt}]
-    # )
+    Only respond in JSON format with keys: tech_stack, seniority, remote, fit_score, pitch
+    """
 
-    # return response.choices[0].message.content
+    response = client.chat.completions.create(
+        model="llama3-70b-8192",
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    content = response.choices[0].message.content
+    return content
 
 def process_jobs():
+    user_profile = get_user_profile()
+    if not user_profile:
+        raise Exception("User profile not found!")
+
     jobs = get_unprocessed_jobs()
     processed_jobs = []
 
     for job in jobs:
         try:
-            ai_response = generate_job_analysis(job["description"])
+            ai_response = generate_job_analysis(job["description"], user_profile)
             ai_data = json.loads(ai_response)
 
-            # Update job record
             supabase.table("jobs").update({
                 "tech_stack": ai_data.get("tech_stack"),
                 "seniority": ai_data.get("seniority"),
@@ -60,10 +71,12 @@ def process_jobs():
                 "fit_score": ai_data.get("fit_score"),
                 "pitch": ai_data.get("pitch"),
                 "processed": True,
-                "scraped_at": job.get("scraped_at", datetime.now().isoformat())
+                "scraped_at": job.get("scraped_at", datetime.now(timezone.utc).isoformat())
             }).eq("id", job["id"]).execute()
 
             processed_jobs.append(job["id"])
+            print(f"Processed job {job['id']} with AI data: {ai_data}")
+
         except Exception as e:
             print(f"Failed processing job {job['id']}: {e}")
 
