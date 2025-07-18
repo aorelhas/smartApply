@@ -4,50 +4,78 @@ import { Job } from "@/lib/types";
 import JobCard from "./JobCard";
 import { useEffect, useState } from "react";
 import { fetchJobs } from "@/lib/api/jobs";
+import { useSearchParams } from "next/navigation";
 
-interface JobsListProps {
-  initialJobs: Job[];
-}
-
-export default function JobsList({ initialJobs }: JobsListProps) {
+export default function JobsList({ initialJobs }: { initialJobs: Job[] }) {
   const [jobs, setJobs] = useState<Job[]>(initialJobs);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const limit = 20;
 
-  // Load more jobs when reaching bottom
+  const searchParams = useSearchParams();
+
+  // Re-fetch when search params change
   useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + document.documentElement.scrollTop !==
-          document.documentElement.offsetHeight ||
-        loading ||
-        !hasMore
-      ) {
-        return;
-      }
-      loadMoreJobs();
-    };
+    const debounce = setTimeout(() => {
+      const fetchFilteredJobs = async () => {
+        setLoading(true);
+        try {
+          const remote = searchParams.get("remote") === "true";
+          const minFitScore = searchParams.get("minFitScore")
+            ? parseInt(searchParams.get("minFitScore") as string)
+            : undefined;
+          const techStack = searchParams.get("techStack") || undefined;
 
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [loading, hasMore]);
+          const newJobs = await fetchJobs({
+            remote,
+            minFitScore,
+            techStack,
+            limit,
+            offset: 0,
+          });
 
+          setJobs(newJobs);
+          setPage(1);
+          setHasMore(newJobs.length > 0);
+        } catch (error) {
+          console.error("Failed to fetch jobs with filters:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchFilteredJobs();
+    }, 400); // debounce by 400ms
+
+    return () => clearTimeout(debounce);
+  }, [searchParams]);
+
+  // Load more jobs (infinite scroll)
   const loadMoreJobs = async () => {
     setLoading(true);
     try {
+      const remote = searchParams.get("remote") === "true";
+      const minFitScore = searchParams.get("minFitScore")
+        ? parseInt(searchParams.get("minFitScore") as string)
+        : undefined;
+      const techStack = searchParams.get("techStack") || undefined;
+
       const nextPage = page + 1;
-      const newJobs = await fetchJobs({
+      const moreJobs = await fetchJobs({
+        remote,
+        minFitScore,
+        techStack,
         limit,
-        offset: nextPage * limit,
+        offset: page * limit,
       });
 
-      if (newJobs.length === 0) {
-        setHasMore(false);
-      } else {
-        setJobs((prev) => [...prev, ...newJobs]);
+      setJobs((prev) => [...prev, ...moreJobs]);
+      if (moreJobs.length === limit) {
         setPage(nextPage);
+      }
+      if (moreJobs.length < limit) {
+        setHasMore(false);
       }
     } catch (error) {
       console.error("Failed to load more jobs:", error);
@@ -55,6 +83,23 @@ export default function JobsList({ initialJobs }: JobsListProps) {
       setLoading(false);
     }
   };
+
+  // Setup infinite scroll listener
+  useEffect(() => {
+    const handleScroll = () => {
+      if (
+        window.innerHeight + window.scrollY >=
+          document.body.offsetHeight - 300 &&
+        !loading &&
+        hasMore
+      ) {
+        loadMoreJobs();
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [loading, hasMore, searchParams, page]);
 
   if (jobs.length === 0) {
     return (

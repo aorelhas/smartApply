@@ -22,7 +22,7 @@ export async function fetchJobs({
   params.append("sort_by", sortBy);
   params.append("sort_order", sortOrder);
 
-  const res = await fetch(`${API_URL}/jobs?${params.toString()}`);
+  const res = await fetch(`${API_URL}/jobs/?${params.toString()}`);
 
   if (!res.ok) {
     throw new Error("Failed to fetch jobs");
