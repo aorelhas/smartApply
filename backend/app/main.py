@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import health
+from app.routers import health, scraping
 from app.core import config, logging_config
 
 logger = logging_config.logger
@@ -22,6 +22,7 @@ app.add_middleware(
 
 # Routers
 app.include_router(health.router, prefix="/api/v1/health", tags=["Health"])
+app.include_router(scraping.router, prefix="/api/v1/scrape", tags=["Scraping"])
 
 # Exception Handler
 @app.exception_handler(Exception)
