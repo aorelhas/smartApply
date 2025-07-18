@@ -1,21 +1,21 @@
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import health, scraping
+from app.routers import health, scraping, ai
 from app.core import config, logging_config
 
 logger = logging_config.logger
 
 app = FastAPI(
-    title="Job Assistant",
-    description="Backend API for personal Job Search Assistant",
-    version="0.1.0"
+    title=config.APP_TITLE,
+    description=config.APP_DESCRIPTION,
+    version=config.APP_VERSION
 )
 
-# CORS 
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"], 
+    allow_origins=config.ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -23,6 +23,7 @@ app.add_middleware(
 # Routers
 app.include_router(health.router, prefix="/api/v1/health", tags=["Health"])
 app.include_router(scraping.router, prefix="/api/v1/scrape", tags=["Scraping"])
+app.include_router(ai.router, prefix="/api/v1/ai", tags=["AI Processing"])
 
 # Exception Handler
 @app.exception_handler(Exception)
