@@ -7,21 +7,51 @@ export default function ScoreFilter({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const scores = [
+    { value: "", label: "All scores" },
+    { value: "70", label: "70%+ (Good)" },
+    { value: "80", label: "80%+ (Great)" },
+    { value: "90", label: "90%+ (Excellent)" },
+  ];
+
   return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        Minimum Fit Score
+    <div className="space-y-3">
+      <label className="block text-sm font-medium text-gray-700">
+        Minimum Match Score
       </label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-      >
-        <option value="">Any score</option>
-        <option value="70">70%+</option>
-        <option value="80">80%+</option>
-        <option value="90">90%+</option>
-      </select>
+
+      <div className="flex flex-wrap gap-2">
+        {scores.map((score) => (
+          <button
+            key={score.value}
+            type="button"
+            onClick={() => onChange(score.value)}
+            className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
+              value === score.value
+                ? "bg-primary-100 text-primary-800 border border-primary-300 font-medium"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            {score.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="pt-2">
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={value || "0"}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
+        />
+        <div className="flex justify-between text-xs text-gray-500 mt-1">
+          <span>0%</span>
+          <span>Selected: {value || "0"}%</span>
+          <span>100%</span>
+        </div>
+      </div>
     </div>
   );
 }
