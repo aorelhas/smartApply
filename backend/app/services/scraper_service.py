@@ -1,43 +1,49 @@
+import requests
 from datetime import datetime, timezone
 from app.core.supabase_client import supabase
 import uuid
 
-def scrape_jobs():
-    # Mocked data for now
+REMOTEOK_API_URL = "https://remoteok.io/api"
 
-    jobs = [
-        {
-            "title": "Backend Developer",
-            "company": "Acme Corp",
-            "location": "Remote",
-            "remote": True,
-            "seniority": "Mid-level",
-            "tech_stack": ["Python", "FastAPI", "PostgreSQL"],
-            "description": "Build and maintain backend services...",
-            "source": "MockSource",
-            "url": "https://example.com/job/backend-developer",
-            "scraped_at": datetime.now(timezone.utc).isoformat()
-        },
-        {
-            "title": "Frontend Engineer",
-            "company": "NextGen UI",
-            "location": "Remote",
-            "remote": True,
-            "seniority": "Senior",
-            "tech_stack": ["React", "Next.js", "Tailwind CSS"],
-            "description": "Develop engaging user interfaces...",
-            "source": "MockSource",
-            "url": "https://example.com/job/frontend-engineer",
-            "scraped_at": datetime.now(timezone.utc).isoformat()
-        }
-    ]
+def scrape_remoteok():
+    response = requests.get(REMOTEOK_API_URL, headers={"User-Agent": "Mozilla/5.0"})
+    if response.status_code != 200:
+        raise Exception("Failed to fetch data from RemoteOK")
+    
+    jobs = response.json()[1:] # In order to skip metadata
 
-    # Insert each job into Supabase
     for job in jobs:
-        supabase.table("jobs").insert({
+        job_data = {
             "id": str(uuid.uuid4()),
-            **job,
-            "processed": False
-        }).execute()
+            "title": job.get("position") or job.get("title"),
+            "company": job.get("company"),
+            "location": job.get("location") or "Remote",
+            "remote": True,
+            "seniority": None,
+            "tech_stack": job.get("tags", []),
+            "description": job.get("description"),
+            "fit_score": None,
+            "pitch": None,
+            "source": "RemoteOK",
+            "url": job.get("url"),
+            "scraped_at": datetime.now(timezone.utc).isoformat(),
+            "processed": False,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
 
-    return jobs
+        existing = supabase.table("jobs").select("id").eq("url", job_data["url"]).execute()
+        if existing.data:
+            continue
+
+        supabase.table("jobs").insert(job_data).execute()
+
+    return {"source": "RemoteOK", "jobs_scraped": len(jobs)}
+
+# todo: create multiple functions for each scrape
+
+
+def scrape_all_sources():
+    results = []
+    results.append(scrape_remoteok())
+
+    return results

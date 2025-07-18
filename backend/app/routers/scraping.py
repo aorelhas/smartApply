@@ -1,9 +1,9 @@
 from fastapi import APIRouter
-from app.services.scraper_service import scrape_jobs
+from app.services.scraper_service import scrape_all_sources
 
 router = APIRouter()
 
-@router.post("/")
-def trigger_scraping():
-    jobs = scrape_jobs()
-    return {"message": "Scraping completed", "jobs_found": len(jobs)}
+@router.post("/all")
+def trigger_all_sources_scraping():
+    results = scrape_all_sources()
+    return {"message": "Scraping completed for all resources", "details": results}
