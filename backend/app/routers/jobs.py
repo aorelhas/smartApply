@@ -1,6 +1,7 @@
+from http.client import HTTPException
 from fastapi import APIRouter, Query
 from typing import Optional, List
-from app.services.job_service import get_all_jobs
+from app.services.job_service import get_all_jobs, get_job_by_id
 from app.models.job_models import JobResponse
 
 router = APIRouter()
@@ -25,3 +26,10 @@ def list_jobs(
         sort_order=sort_order
     )
     return jobs
+
+@router.get("/{job_id}", response_model=JobResponse)
+def get_job(job_id: str):
+    job = get_job_by_id(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job

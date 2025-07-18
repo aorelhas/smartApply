@@ -30,3 +30,14 @@ export async function fetchJobs({
 
   return res.json();
 }
+
+export async function fetchJobDetails(id: string): Promise<Job | null> {
+  const res = await fetch(`${API_URL}/jobs/${id}`);
+
+  if (!res.ok) {
+    console.error(`Failed to fetch job details for ID ${id}`);
+    return null;
+  }
+
+  return res.json();
+}

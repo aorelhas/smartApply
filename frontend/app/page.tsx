@@ -1,29 +1,55 @@
-"use client";
+import { Job } from "@/lib/types";
+import JobsList from "@/components/jobs/JobsList";
+import Filters from "@/components/filters/Filters";
+import { fetchJobs } from "@/lib/api/jobs";
 
-import { useEffect, useState } from "react";
-import { fetchHealth } from "@/lib/api";
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const resolvedSearchParams = await searchParams;
 
-export default function Home() {
-  const [ping, setPing] = useState<string | null>(null);
-  const [error, setError] = useState<boolean>(false);
+  const remote = resolvedSearchParams.remote === "true";
+  const minFitScore = resolvedSearchParams.minFitScore
+    ? parseInt(resolvedSearchParams.minFitScore as string)
+    : undefined;
+  const techStack = resolvedSearchParams.techStack
+    ? (resolvedSearchParams.techStack as string).split(",")
+    : undefined;
 
-  useEffect(() => {
-    fetchHealth()
-      .then((data) => setPing(data.status))
-      .catch(() => setError(true));
-  }, []);
-
-  if (error) {
-    return <p>Failed to contact backend 😕</p>;
-  }
-
-  if (!ping) {
-    return <p>Checking backend status...</p>;
-  }
+  const initialJobs = await fetchJobs({
+    remote,
+    minFitScore,
+    techStack,
+    limit: 20,
+    sortBy: "fit_score",
+    sortOrder: "desc",
+  });
 
   return (
-    <main className="p-4">
-      <h1 className="text-xl font-bold">Backend Status: {ping}</h1>
+    <main className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">
+          AI-Powered Job Matches
+        </h1>
+        <p className="text-gray-600 mt-2">
+          Jobs tailored to your skills and preferences
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+            <h2 className="font-bold text-lg mb-4">Filters</h2>
+            <Filters />
+          </div>
+        </div>
+
+        <div className="lg:col-span-3">
+          <JobsList initialJobs={initialJobs} />
+        </div>
+      </div>
     </main>
   );
 }
